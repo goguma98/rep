@@ -6,13 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Workout" />
+<meta name="apple-mobile-web-app-title" content="REP" />
 <meta name="theme-color" content="#0D0D11" />
-<title>Workout</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230D0D11'/%3E%3Ctext x='50' y='62' font-size='42' font-family='monospace' font-weight='bold' fill='%23F1FF0A' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E" />
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230D0D11'/%3E%3Ctext x='50' y='62' font-size='42' font-family='monospace' font-weight='bold' fill='%23F1FF0A' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E" />
+<title>REP</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230D0D11'/%3E%3Ctext x='50' y='62' font-size='38' font-family='monospace' font-weight='bold' fill='%23F1FF0A' text-anchor='middle'%3EREP%3C/text%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230D0D11'/%3E%3Ctext x='50' y='62' font-size='38' font-family='monospace' font-weight='bold' fill='%23F1FF0A' text-anchor='middle'%3EREP%3C/text%3E%3C/svg%3E" />
 <style>
-html, body { margin: 0; padding: 0; background: #0D0D11; min-height: 100vh; min-height: 100dvh; }
+html, body { margin: 0; padding: 0; background: #07070A; min-height: 100vh; min-height: 100dvh; }
 body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 #root { min-height: 100vh; min-height: 100dvh; }
 </style>
@@ -88,7 +88,9 @@ const BG = "#0D0D11";
 const CARD_BG = "#16161b";
 const CARD_BG_DONE = "#16170d";
 const BORDER = "rgba(255,255,255,0.06)";
+const BORDER_SOFT = "rgba(255,255,255,0.1)";
 const BORDER_ACCENT = "rgba(241,255,10,0.3)";
+const BORDER_ACCENT_STRONG = "rgba(241,255,10,0.45)";
 const TEXT = "#e8e8e8";
 const TEXT_DIM = "#7a7a7a";
 const TEXT_FAINT = "#4a4a4a";
@@ -105,10 +107,10 @@ const sansStyle = {
 
 /* ---------- META ---------- */
 const DAYS = [
-  { code: "D1", name: "Lower Body A", focus: "스쿼트 중심" },
-  { code: "D2", name: "Upper Body A", focus: "수평 푸시 · 풀" },
-  { code: "D3", name: "Lower Body B", focus: "힌지 중심" },
-  { code: "D4", name: "Upper Body B", focus: "수직 푸시 · 풀" },
+  { code: "D1", name: "Lower Body A", focus: "Squat focus · Quads" },
+  { code: "D2", name: "Upper Body A", focus: "Push focus · Chest / Triceps" },
+  { code: "D3", name: "Lower Body B", focus: "Hinge focus · Hams / Glutes" },
+  { code: "D4", name: "Upper Body B", focus: "Pull focus · Back / Biceps" },
 ];
 
 /* ---------- CARDIO ---------- */
@@ -118,9 +120,7 @@ const CARDIO = {
 };
 const cardioFor = (d) => (d === 0 || d === 2 ? CARDIO.lower : CARDIO.upper);
 
-/* ---------- PROGRAM DATA (only completed/agreed weeks) ----------
-   each exercise: [name, "sets × reps", "weight", optional "note"]
-*/
+/* ---------- PROGRAM DATA ---------- */
 const PROGRAM = {
   1: [
     [["고블릿 스쿼트","3 × 10","5","발 정면 · 가슴 앞 세로"],["레그 프레스","3 × 12","20"],["레그 익스텐션","3 × 12","15"],["라잉 레그컬","3 × 12","15"],["스탠딩 카프레이즈","3 × 15","20"],["플랭크","3 × 30s","—"]],
@@ -143,23 +143,27 @@ const PROGRAM = {
 };
 
 const MAX_WEEK = Math.max(...Object.keys(PROGRAM).map(Number));
+const TOTAL_WEEKS = 12;
 
 /* ---------- LOCAL STORAGE ---------- */
 const STORAGE_KEY = "workout_state_v4";
+const DEFAULT_CURRENT_WEEK = 3;
 
 const loadState = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { week: MAX_WEEK, day: 0, done: {}, memos: {} };
+    if (!raw) return { view: "home", currentWeek: DEFAULT_CURRENT_WEEK, week: MAX_WEEK, day: 0, done: {}, memos: {} };
     const s = JSON.parse(raw);
     return {
+      view: s.view ?? "home",
+      currentWeek: Math.min(Math.max(s.currentWeek ?? DEFAULT_CURRENT_WEEK, 1), TOTAL_WEEKS),
       week: Math.min(s.week ?? MAX_WEEK, MAX_WEEK),
       day: s.day ?? 0,
       done: s.done ?? {},
       memos: s.memos ?? {},
     };
   } catch {
-    return { week: MAX_WEEK, day: 0, done: {}, memos: {} };
+    return { view: "home", currentWeek: DEFAULT_CURRENT_WEEK, week: MAX_WEEK, day: 0, done: {}, memos: {} };
   }
 };
 
@@ -178,9 +182,65 @@ const todayStr = () => {
   return `${yy}/${mm}/${dd}`;
 };
 
+const homeDateStr = () => {
+  const d = new Date();
+  const days = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+  const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  return `${days[d.getDay()]} · ${months[d.getMonth()]} ${d.getDate()}`;
+};
+
 const renderWeight = (w) => {
   if (w === "—" || !w) return null;
   return /^[\d.]+$/.test(w) ? `${w} kg` : w;
+};
+
+const blockOf = (week) => Math.ceil(week / 4);
+
+// Session = complete when all exercises + cardio are done
+const isSessionComplete = (w, d, done) => {
+  const exs = PROGRAM[w]?.[d];
+  if (!exs) return false;
+  const total = exs.length + 1; // exercises + cardio
+  for (let i = 0; i < total; i++) {
+    if (!done[`${w}_${d}_${i}`]) return false;
+  }
+  return true;
+};
+
+// Find first incomplete session within a specific week (currentWeek-based)
+const findTodayInWeek = (w, done) => {
+  if (!PROGRAM[w]) return null;
+  for (let d = 0; d < 4; d++) {
+    if (!isSessionComplete(w, d, done)) return { week: w, day: d };
+  }
+  // All sessions complete this week — point to last day
+  return { week: w, day: 3, allDone: true };
+};
+
+// Session immediately before given session — skips weeks without data
+const findLastBefore = (current, done) => {
+  if (!current) return null;
+  let w = current.week;
+  let d = current.day - 1;
+  while (true) {
+    if (d < 0) {
+      d = 3;
+      w -= 1;
+    }
+    if (w < 1) return null;
+    if (PROGRAM[w]) return { week: w, day: d };
+    w -= 1;
+    d = 3;
+  }
+};
+
+// Find first incomplete day within a specific week
+const firstIncompleteDayIn = (week, done) => {
+  if (!PROGRAM[week]) return 0;
+  for (let d = 0; d < 4; d++) {
+    if (!isSessionComplete(week, d, done)) return d;
+  }
+  return 0;
 };
 
 /* ---------- MAIN ---------- */
@@ -192,17 +252,51 @@ function App() {
   const [memoVisible, setMemoVisible] = useState({});
   const copyTextareaRef = useRef(null);
 
-  const { week, day, done, memos } = state;
+  const { view, week, day, done, memos } = state;
+
+  useEffect(() => saveState(state), [state]);
+
+  const goHome = () => setState((s) => ({ ...s, view: "home" }));
+  const goTracker = (w, d) => setState((s) => ({ ...s, view: "tracker", week: w, day: d }));
+
+  // ---------- HOME VIEW ----------
+  if (view === "home") {
+    const cw = state.currentWeek;
+    const today = findTodayInWeek(cw, done);
+    const last = findLastBefore(today ?? { week: cw, day: 0 }, done);
+
+    return (
+      <HomeScreen
+        currentWeek={cw}
+        today={today}
+        last={last}
+        done={done}
+        onStartToday={() => today && goTracker(today.week, today.day)}
+        onTapLast={() => last && goTracker(last.week, last.day)}
+        onTapWeek={(w) => {
+          if (!PROGRAM[w] || w === cw) return;
+          setState((s) => ({ ...s, currentWeek: w }));
+        }}
+        onPrevWeek={() => {
+          const t = cw - 1;
+          if (t >= 1 && PROGRAM[t]) setState((s) => ({ ...s, currentWeek: t }));
+        }}
+        onNextWeek={() => {
+          const t = cw + 1;
+          if (t <= TOTAL_WEEKS && PROGRAM[t]) setState((s) => ({ ...s, currentWeek: t }));
+        }}
+      />
+    );
+  }
+
+  // ---------- TRACKER VIEW ----------
+  const exercises = PROGRAM[week][day];
+  const cardio = cardioFor(day);
 
   const toggleMemo = (i) => {
     const key = `${week}_${day}_${i}`;
     setMemoVisible((v) => ({ ...v, [key]: !v[key] }));
   };
-
-  useEffect(() => saveState(state), [state]);
-
-  const exercises = PROGRAM[week][day];
-  const cardio = cardioFor(day);
 
   const setWeek = (w) => {
     if (w < 1 || w > MAX_WEEK) return;
@@ -267,7 +361,6 @@ function App() {
     setCopyText(text);
     setCopyOpen(true);
     setCopyStatus("");
-    // Try clipboard API; will fail silently in some iframes
     if (navigator.clipboard?.writeText) {
       navigator.clipboard
         .writeText(text)
@@ -296,61 +389,70 @@ function App() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: BG,
-        color: TEXT,
-        ...sansStyle,
-      }}
-    >
-      <style>{`
-        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        body { margin: 0; background: ${BG}; }
-        button { font-family: inherit; }
-        input, textarea { font-family: inherit; }
-        textarea:focus { outline: none; border-color: ${ACCENT_DIM} !important; }
-        .tap { transition: opacity 0.15s, transform 0.15s; }
-        .tap:active { opacity: 0.6; transform: scale(0.98); }
-        @keyframes slide {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fade-up {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .slide { animation: slide 0.18s ease-out; }
-        .modal-in { animation: fade-up 0.2s ease-out; }
-      `}</style>
+    <div className="page-outer" style={{ color: TEXT, ...sansStyle }}>
+      <SharedStyles />
 
-      <div
-        style={{
-          maxWidth: "420px",
-          margin: "0 auto",
-          padding: "18px 14px 80px",
-          position: "relative",
-        }}
-      >
-        {/* Ambient glow */}
-        <div
-          style={{
-            position: "fixed",
-            top: "-80px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "360px",
-            height: "260px",
-            background: `radial-gradient(ellipse, ${ACCENT_GLOW} 0%, transparent 65%)`,
-            pointerEvents: "none",
-            zIndex: 0,
-            filter: "blur(20px)",
-          }}
-        />
+      <div className="page-shell">
+        <div className="page-glow" />
 
-        <div style={{ position: "relative", zIndex: 1 }}>
+        <div style={{ position: "relative", zIndex: 1, padding: "18px 14px 80px" }}>
+          {/* Top bar with REP logo → home */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "18px",
+            }}
+          >
+            <button
+              onClick={goHome}
+              className="tap"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: "4px 2px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "baseline",
+                gap: "4px",
+              }}
+            >
+              <span
+                style={{
+                  ...sansStyle,
+                  fontSize: "22px",
+                  fontWeight: 800,
+                  color: ACCENT,
+                  letterSpacing: "-0.04em",
+                }}
+              >
+                REP
+              </span>
+              <span
+                style={{
+                  ...sansStyle,
+                  fontSize: "9px",
+                  fontWeight: 500,
+                  color: ACCENT,
+                  marginLeft: "-2px",
+                }}
+              >
+                ®
+              </span>
+            </button>
+            <div
+              style={{
+                ...monoStyle,
+                fontSize: "10px",
+                color: TEXT_FAINT,
+                letterSpacing: "0.1em",
+              }}
+            >
+              {homeDateStr()}
+            </div>
+          </div>
+
           {/* Week nav */}
           <div
             style={{
@@ -750,6 +852,435 @@ function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- SHARED STYLES ---------- */
+function SharedStyles() {
+  return (
+    <style>{`
+      @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+      * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+      body { margin: 0; background: #07070A; }
+      .page-outer {
+        min-height: 100vh;
+        min-height: 100dvh;
+        background: #07070A;
+        display: flex;
+        justify-content: center;
+      }
+      .page-shell {
+        width: 100%;
+        max-width: 440px;
+        background: ${BG};
+        min-height: 100vh;
+        min-height: 100dvh;
+        position: relative;
+        overflow: hidden;
+        box-shadow:
+          0 0 0 1px rgba(255,255,255,0.05),
+          0 0 40px rgba(0,0,0,0.5),
+          0 0 100px rgba(241,255,10,0.03);
+      }
+      @media (max-width: 440px) {
+        .page-shell { box-shadow: none; }
+      }
+      .page-glow {
+        position: absolute;
+        top: -80px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 360px;
+        height: 260px;
+        background: radial-gradient(ellipse, ${ACCENT_GLOW} 0%, transparent 65%);
+        pointer-events: none;
+        z-index: 0;
+        filter: blur(20px);
+      }
+      button { font-family: inherit; }
+      input, textarea { font-family: inherit; }
+      textarea:focus { outline: none; border-color: ${ACCENT_DIM} !important; }
+      .tap { transition: opacity 0.15s, transform 0.15s; }
+      .tap:active { opacity: 0.6; transform: scale(0.98); }
+      @keyframes slide {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes fade-up {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes home-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .slide { animation: slide 0.18s ease-out; }
+      .modal-in { animation: fade-up 0.2s ease-out; }
+      .home-in { animation: home-in 0.25s ease-out; }
+    `}</style>
+  );
+}
+
+/* ---------- HOME SCREEN ---------- */
+function HomeScreen({ currentWeek, today, last, done, onStartToday, onTapLast, onTapWeek, onPrevWeek, onNextWeek }) {
+  const week = currentWeek;
+  const todayDay = today ? DAYS[today.day] : null;
+  const lastDay = last ? DAYS[last.day] : null;
+  const exCount = today ? (PROGRAM[today.week]?.[today.day]?.length ?? 6) : 6;
+  // rough time estimate: 8 min/exercise + 12 min cardio
+  const timeEst = exCount * 8 + 12;
+  const block = blockOf(week);
+
+  const canPrev = week > 1 && !!PROGRAM[week - 1];
+  const canNext = week < TOTAL_WEEKS && !!PROGRAM[week + 1];
+
+  // 5-week window centered on currentWeek
+  const visibleWeeks = [-2, -1, 0, 1, 2].map((o) => week + o);
+
+  return (
+    <div className="page-outer home-in" style={{ color: TEXT, ...sansStyle }}>
+      <SharedStyles />
+
+      <div className="page-shell">
+        <div className="page-glow" />
+
+        <div style={{ position: "relative", zIndex: 1, padding: "26px 22px 80px" }}>
+          {/* ===== HEADER ===== */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              marginBottom: "28px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+              <span
+                style={{
+                  ...sansStyle,
+                  fontSize: "36px",
+                  fontWeight: 800,
+                  color: ACCENT,
+                  letterSpacing: "-0.05em",
+                  lineHeight: 1,
+                }}
+              >
+                REP
+              </span>
+              <span
+                style={{
+                  ...sansStyle,
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: ACCENT,
+                  alignSelf: "flex-start",
+                  marginTop: "2px",
+                }}
+              >
+                ®
+              </span>
+            </div>
+            <div
+              style={{
+                ...monoStyle,
+                fontSize: "10px",
+                color: TEXT_FAINT,
+                letterSpacing: "0.1em",
+                marginTop: "6px",
+              }}
+            >
+              {homeDateStr()}
+            </div>
+          </div>
+
+          {/* ===== META BLOCK ===== */}
+          <div style={{ marginBottom: "20px", ...monoStyle, fontSize: "11px", letterSpacing: "0.05em" }}>
+            <div style={{ color: TEXT_DIM, marginBottom: "6px" }}>JAWON</div>
+            <div style={{ color: TEXT_DIM, marginBottom: "6px" }}>
+              WEEK <span style={{ color: ACCENT, fontWeight: 600 }}>{String(week).padStart(2, "0")}</span>
+              {" / "}{TOTAL_WEEKS} · BLOCK {block}
+            </div>
+            <div style={{ color: TEXT_DIM }}>UPPER · LOWER · 4 D/WK</div>
+          </div>
+
+          {/* Divider */}
+          <div
+            style={{
+              height: "1px",
+              background: BORDER_SOFT,
+              margin: "0 -22px 22px",
+            }}
+          />
+
+          {/* ===== WEEK PILLS ===== */}
+          <div
+            style={{
+              display: "flex",
+              gap: "6px",
+              marginBottom: "28px",
+              alignItems: "stretch",
+            }}
+          >
+            {/* Prev arrow */}
+            <button
+              onClick={canPrev ? onPrevWeek : undefined}
+              disabled={!canPrev}
+              className={canPrev ? "tap" : ""}
+              style={{
+                flex: "0 0 auto",
+                width: "24px",
+                background: "transparent",
+                border: "none",
+                color: canPrev ? TEXT_DIM : TEXT_FAINT,
+                cursor: canPrev ? "pointer" : "default",
+                padding: 0,
+                ...monoStyle,
+                fontSize: "18px",
+                fontWeight: 400,
+                opacity: canPrev ? 1 : 0.25,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ‹
+            </button>
+
+            {/* Pills (5-week window) */}
+            {visibleWeeks.map((w, idx) => {
+              const isActive = w === week;
+              const isInRange = w >= 1 && w <= TOTAL_WEEKS;
+              const hasData = isInRange && !!PROGRAM[w];
+              const clickable = hasData && !isActive;
+
+              if (!isInRange) {
+                return <div key={idx} style={{ flex: 1 }} />;
+              }
+
+              return (
+                <button
+                  key={idx}
+                  onClick={() => clickable && onTapWeek(w)}
+                  disabled={!clickable && !isActive}
+                  className={clickable ? "tap" : ""}
+                  style={{
+                    flex: 1,
+                    background: isActive ? "rgba(241,255,10,0.05)" : "transparent",
+                    border: `1px solid ${
+                      isActive
+                        ? BORDER_ACCENT_STRONG
+                        : hasData
+                        ? BORDER_SOFT
+                        : BORDER
+                    }`,
+                    color: isActive ? ACCENT : hasData ? TEXT_DIM : TEXT_FAINT,
+                    opacity: hasData || isActive ? 1 : 0.45,
+                    padding: "10px 0",
+                    borderRadius: "10px",
+                    cursor: clickable ? "pointer" : "default",
+                    ...monoStyle,
+                    fontSize: "11px",
+                    fontWeight: isActive ? 700 : 500,
+                    letterSpacing: "0.08em",
+                    textAlign: "center",
+                  }}
+                >
+                  W{String(w).padStart(2, "0")}
+                </button>
+              );
+            })}
+
+            {/* Next arrow */}
+            <button
+              onClick={canNext ? onNextWeek : undefined}
+              disabled={!canNext}
+              className={canNext ? "tap" : ""}
+              style={{
+                flex: "0 0 auto",
+                width: "24px",
+                background: "transparent",
+                border: "none",
+                color: canNext ? TEXT_DIM : TEXT_FAINT,
+                cursor: canNext ? "pointer" : "default",
+                padding: 0,
+                ...monoStyle,
+                fontSize: "18px",
+                fontWeight: 400,
+                opacity: canNext ? 1 : 0.25,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ›
+            </button>
+          </div>
+
+          {/* ===== TODAY CARD ===== */}
+          {todayDay && (
+          <div
+            style={{
+              background: "rgba(241,255,10,0.04)",
+              border: `1px solid ${BORDER_ACCENT_STRONG}`,
+              borderRadius: "16px",
+              padding: "22px 22px 22px",
+              marginBottom: "14px",
+              boxShadow: `0 0 32px rgba(241,255,10,0.06)`,
+            }}
+          >
+            {/* Header row */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "16px",
+              }}
+            >
+              <span
+                style={{
+                  ...monoStyle,
+                  fontSize: "10px",
+                  color: ACCENT,
+                  letterSpacing: "0.22em",
+                  fontWeight: 600,
+                }}
+              >
+                {todayDay.code} · TODAY
+              </span>
+              <span
+                style={{
+                  ...monoStyle,
+                  fontSize: "10px",
+                  color: ACCENT_DIM,
+                  letterSpacing: "0.1em",
+                }}
+              >
+                ~{timeEst} MIN · {exCount} EX
+              </span>
+            </div>
+
+            {/* Title */}
+            <div
+              style={{
+                fontSize: "26px",
+                fontWeight: 700,
+                color: ACCENT,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.15,
+                marginBottom: "6px",
+              }}
+            >
+              {todayDay.name}
+            </div>
+
+            {/* Subtitle */}
+            <div
+              style={{
+                fontSize: "13px",
+                color: ACCENT_DIM,
+                marginBottom: "22px",
+                lineHeight: 1.4,
+              }}
+            >
+              {todayDay.focus}
+            </div>
+
+            {/* START button */}
+            <button
+              onClick={onStartToday}
+              className="tap"
+              style={{
+                width: "100%",
+                background: ACCENT,
+                color: TEXT_ON_ACCENT,
+                border: "none",
+                padding: "15px 0",
+                borderRadius: "10px",
+                cursor: "pointer",
+                ...monoStyle,
+                fontSize: "13px",
+                fontWeight: 700,
+                letterSpacing: "0.18em",
+              }}
+            >
+              START →
+            </button>
+          </div>
+          )}
+
+          {/* ===== LAST CARD ===== */}
+          {last && (
+            <button
+              onClick={onTapLast}
+              className="tap"
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,0.02)",
+                border: `1px solid ${BORDER_SOFT}`,
+                borderRadius: "16px",
+                padding: "18px 22px",
+                textAlign: "left",
+                cursor: "pointer",
+                color: "inherit",
+                display: "block",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "10px",
+                }}
+              >
+                <span
+                  style={{
+                    ...monoStyle,
+                    fontSize: "10px",
+                    color: TEXT_DIM,
+                    letterSpacing: "0.22em",
+                    fontWeight: 600,
+                  }}
+                >
+                  {lastDay.code} · LAST
+                </span>
+                <span
+                  style={{
+                    ...monoStyle,
+                    fontSize: "10px",
+                    color: TEXT_FAINT,
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  W{String(last.week).padStart(2, "0")}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: "19px",
+                  fontWeight: 600,
+                  color: "rgba(255,255,255,0.85)",
+                  letterSpacing: "-0.015em",
+                  marginBottom: "4px",
+                }}
+              >
+                {lastDay.name}
+              </div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: TEXT_DIM,
+                }}
+              >
+                {lastDay.focus}
+              </div>
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
